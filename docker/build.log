@@ -1,0 +1,26 @@
+Sending build context to Docker daemon  20.48kB
+Step 1/31 : FROM nvidia/cudagl:11.4.2-devel-ubuntu20.04
+ ---> 28771bde8e49
+Step 2/31 : LABEL org.opencontainers.image.authors="rzh@umich.edu,junzhewu@umich.edu"
+ ---> Running in e97dd927023a
+Removing intermediate container e97dd927023a
+ ---> b12743320a56
+Step 3/31 : LABEL description="Container for CURLY Minimum Viable SLAM"
+ ---> Running in 4e84d8bb64ae
+Removing intermediate container 4e84d8bb64ae
+ ---> 7cd00ac9e393
+Step 4/31 : LABEL version="0.3"
+ ---> Running in 57090e52dd24
+Removing intermediate container 57090e52dd24
+ ---> d29945ceacc0
+Step 5/31 : ENV DEBIAN_FRONTEND noninteractive
+ ---> Running in 00f535499b70
+Removing intermediate container 00f535499b70
+ ---> ec9d629a3f3e
+Step 6/31 : RUN apt-get update     && DEBIAN_FRONTEND=noninteractive apt-get install -y locales     && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen     && dpkg-reconfigure --frontend=noninteractive locales     && update-locale LANG=en_US.UTF-8
+ ---> Running in 583b54e2b946
+Ign:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64  InRelease
+Get:2 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64  Release [696 B]
+Get:3 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64  Release.gpg [836 B]
+Get:4 http://security.ubuntu.com/ubuntu focal-security InRelease [114 kB]
+Get:5 http://archive.ubuntu.com/ubuntu focal InRelease [265 kB]
