@@ -20,39 +20,38 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(Boost REQUIRED COMPONENTS system)
 
 list(APPEND CMAKE_PREFIX_PATH "~/libtorch")
-list(APPEND CMAKE_PREFIX_PATH "/opt/conda/lib/python3.8/site-packages/torch/lib")
-list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/python2.7/dist-packages/torch/lib")
 
-if(NOT EXISTS "~/libtorch")
-    if (EXISTS "/opt/conda/lib/python3.8/site-packages/torch")     
-        include_directories(/usr/local/include) 
-        include_directories(/opt/conda/lib/python3.8/site-packages/torch/include/torch/csrc/api/include)
-        include_directories(/opt/conda/lib/python3.8/site-packages/torch/include)
 
-        link_directories(/usr/local/lib)
-        link_directories(/opt/conda/lib/python3.8/site-packages/torch/lib)
+# if(NOT EXISTS "~/libtorch")
+#     if (EXISTS "/usr/local/lib/python3.6/dist-packages/torch")     
+#         include_directories(/usr/local/include) 
+#         include_directories(/usr/local/lib/python3.6/dist-packages/torch/include/torch/csrc/api/include)
+#         include_directories(/usr/local/lib/python3.6/dist-packages/torch/include)
 
-        set(CMAKE_PREFIX_PATH /opt/conda/lib/python3.8/site-packages/torch)
-        set(Boost_USE_MULTITHREADED ON)
-        set(Torch_DIR /opt/conda/lib/python3.8/site-packages/torch)
+#         link_directories(/usr/local/lib)
+#         link_directories(/usr/local/lib/python3.6/dist-packages/torch/lib)
+
+#         set(CMAKE_PREFIX_PATH /usr/local/lib/python3.6/dist-packages/torch)
+#         set(Boost_USE_MULTITHREADED ON)
+#         set(Torch_DIR /usr/local/lib/python3.6/dist-packages/torch)
             
-    elseif (EXISTS "/usr/local/lib/python2.7/dist-packages/torch")
+#     elseif (EXISTS "/usr/local/lib/python2.7/dist-packages/torch")
     
-        include_directories(/usr/local/include) 
-        include_directories(/usr/local/lib/python2.7/dist-packages/torch/include/torch/csrc/api/include)
-        include_directories(/usr/local/lib/python2.7/dist-packages/torch/include)
+#         include_directories(/usr/local/include) 
+#         include_directories(/usr/local/lib/python2.7/dist-packages/torch/include/torch/csrc/api/include)
+#         include_directories(/usr/local/lib/python2.7/dist-packages/torch/include)
 
-        link_directories(/usr/local/lib)
-        link_directories(/usr/local/lib/python2.7/dist-packages/torch/lib)
+#         link_directories(/usr/local/lib)
+#         link_directories(/usr/local/lib/python2.7/dist-packages/torch/lib)
 
-        set(CMAKE_PREFIX_PATH /usr/local/lib/python2.7/dist-packages/torch)
-        set(Boost_USE_MULTITHREADED ON)
-        set(Torch_DIR /usr/local/lib/python2.7/dist-packages/torch)
-    endif()
-endif()
+#         set(CMAKE_PREFIX_PATH /usr/local/lib/python2.7/dist-packages/torch)
+#         set(Boost_USE_MULTITHREADED ON)
+#         set(Torch_DIR /usr/local/lib/python2.7/dist-packages/torch)
+#     endif()
+# endif()
         
 
-FIND_PACKAGE(CUDA REQUIRED)
+
 find_package(Torch REQUIRED)
 find_package(OpenCV REQUIRED)
 include_directories( ${OpenCV_INCLUDE_DIRS} )
