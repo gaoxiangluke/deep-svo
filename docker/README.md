@@ -52,9 +52,12 @@ roslaunch midas_cpp midas_cpp.launch model_name:="model-small-traced.pt" input_t
 To test run above ros launch then
 1. sed -i 's/python3/python2/' ~/ws/catkin_ws/src/midas_cpp/scripts/*.py (This will use python2)
 > Test - capture video and show result in the window:
+
 > place any test.mp4 video file to the directory ~/ws/catkin_ws/src/
-run midas node: ~/catkin_ws/src/launch_midas_cpp.sh
-run test nodes in another terminal: cd ~/catkin_ws/src && ./run_talker_listener_test.sh and wait 30 seconds
+
+> run midas node: ~/catkin_ws/src/launch_midas_cpp.sh
+
+> run test nodes in another terminal: cd ~/catkin_ws/src && ./run_talker_listener_test.sh and wait 30 seconds
 
 
 ## FAQ
