@@ -3,9 +3,10 @@
 # roscore
 # rosnode kill -a
 
-source ~/catkin_ws/devel/setup.bash
+source ~/ws/catkin_ws/devel/setup.bash
 
-roscore &
+
+
 P1=$!
 rosrun midas_cpp talker.py &
 P2=$!
