@@ -39,6 +39,10 @@ This docker file sets up the environment for [CURLY SLAM](https://github.com/UMi
     docker-compose run project
     ```
 1. Voilà！ Now try to build your ROS workspace!
+# Run svo
+check this link
+https://github.com/uzh-rpg/rpg_svo/wiki/Run-SVO-with-ROS
+
 
 # Run depth estimation
 1. compile your ROS workspace
