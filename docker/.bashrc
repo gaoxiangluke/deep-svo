@@ -116,4 +116,5 @@ if ! shopt -oq posix; then
   fi
 fi
 
-source /opt/ros/melodic/bash.sh
+source /opt/ros/melodic/setup.sh
+export G2O_ROOT=/root/slam_lib/g2o-20160424_git
