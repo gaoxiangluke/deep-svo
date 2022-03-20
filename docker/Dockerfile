@@ -1,8 +1,8 @@
-FROM ubuntu:20.04
+FROM pytorch/pytorch:1.8.0-cuda11.1-cudnn8-devel
 LABEL org.opencontainers.image.authors="rzh@umich.edu,junzhewu@umich.edu"
-LABEL description="Container for CURLY Minimum Viable SLAM"
-LABEL version="0.3"
-
+LABEL description="Container for ROB 530"
+LABEL version="0.5"
+USER root
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y locales \
@@ -16,8 +16,6 @@ ENV NVIDIA_VISIBLE_DEVICES \
 ENV NVIDIA_DRIVER_CAPABILITIES \
     ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics,compute,utility,display
 
-
-# install libraries and  tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
         sudo \
         dialog \
@@ -65,22 +63,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         tilix \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+# install libraries and  tools
+RUN apt-get update && apt-get -y install \
+    python3 \
+    python3-pip \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# install python dependencies
+RUN pip3 install --upgrade pip
+RUN pip3 install torch~=1.8 torchvision opencv-python-headless~=3.4 timm
 
 # install ROS
-RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+RUN sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
 
-RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+RUN sudo apt install curl
+RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
 
-RUN apt-get update
+RUN sudo apt-get update
 
-RUN apt-get install -y --no-install-recommends ros-noetic-desktop-full
-
-# install zsh
-RUN git clone https://github.com/tccoin/easy-linux.git /root/easy-linux \
-    && cd /root/easy-linux \
-    && bash zsh.sh \
-    && touch /root/.z \
-    && rm -r /root/easy-linux
+RUN sudo apt-get install -y --no-install-recommends ros-melodic-desktop-full
 
 # install gitstatus
 # https://github.com/romkatv/gitstatus/releases/tag/v1.3.1
@@ -88,73 +93,48 @@ RUN mkdir -p /root/.cache/gitstatus \
     && wget https://github.com/romkatv/gitstatus/releases/download/v1.5.1/gitstatusd-linux-x86_64.tar.gz -O - \
     | tar -zx -C /root/.cache/gitstatus/
 
-# install slam libraries
-
+# install pytorch libraries
 RUN mkdir /root/slam_lib/
 
+WORKDIR /root/
+RUN sudo wget https://download.pytorch.org/libtorch/cu110/libtorch-cxx11-abi-shared-with-deps-1.7.0%2Bcu110.zip
+RUN unzip libtorch-cxx11-abi-shared-with-deps-1.7.0+cu110.zip
+
+#install slam libraries
 WORKDIR /root/slam_lib/
+RUN git clone https://github.com/strasdat/Sophus.git
+RUN /bin/bash -c 'cd Sophus; git checkout a621ff;'
+# Apply fix for known Sophus bug
+COPY change/so2.cpp Sophus/sophus
+RUN /bin/bash -c 'mkdir Sophus/build; cd Sophus/build; cmake ..'
+RUN /bin/bash -c 'cd Sophus/build; sudo make install'
 
-COPY scripts/debian_mkl.sh debian_mkl.sh
-
-RUN bash debian_mkl.sh
-
-RUN git clone https://gitlab.com/libeigen/eigen.git eigen/ -b 3.3.9
-RUN cd eigen/ \
+RUN git clone https://github.com/uzh-rpg/fast.git  fast/
+RUN cd fast/ \
     && mkdir -p build \
     && cd build \
     && cmake .. \
-    && make install -j16
-
-RUN wget https://github.com/opencv/opencv/archive/4.5.5.zip -q -O opencv.zip \
-    && unzip -q opencv.zip \
-    && mv opencv-4.5.5 opencv \
-    && rm opencv.zip \
-    && cd opencv \
-    && wget https://github.com/opencv/opencv_contrib/archive/4.5.5.zip -q -O opencv_contrib.zip \
-    && unzip -q opencv_contrib.zip \
-    && mv opencv_contrib-4.5.5 opencv_contrib \
-    && rm opencv_contrib.zip
-RUN cd opencv/ \
-    && mkdir -p build \
-    && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=RELEASE \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules \
-            -DOPENCV_ENABLE_NONFREE=ON .. \
-    && make install -j16
-
-RUN git clone https://github.com/borglab/gtsam.git gtsam/  -b 4.1.1
-RUN cd gtsam/ \
-    && mkdir -p build \
-    && cd build \
-    && cmake .. -DGTSAM_USE_SYSTEM_EIGEN=TRUE \
-    && make install -j16
-
-RUN git clone https://github.com/RossHartley/invariant-ekf.git invariant-ekf/ -b devel
-RUN cd invariant-ekf/ \
+    && sudo make install -j16
+RUN sudo wget https://github.com/RainerKuemmerle/g2o/archive/20160424_git.tar.gz -O g2o-20160424_git.tar.gz
+RUN tar xvzf g2o-20160424_git.tar.gz
+RUN cd g2o-20160424_git/ \
     && mkdir -p build \
     && cd build \
     && cmake .. \
-    && make -j16
+    && sudo make install -j16
+RUN sudo wget https://gitlab.com/libeigen/eigen/-/archive/3.2.10/eigen-3.2.10.tar.gz
+RUN tar -xf eigen-3.2.10.tar.gz
+RUN cd eigen-3.2.10/ \
+    && mkdir -p build \
+    && cd build \
+    && cmake .. \
+    && sudo make install
 
-RUN git clone https://github.com/OctoMap/octomap.git octomap/
-RUN cd octomap/ \
-    && mkdir -p build \
-    && cd build \
-    && cmake .. \
-    && make install -j16
 
-RUN git clone https://github.com/strasdat/Sophus.git  sophus/
-RUN apt-get install -y --no-install-recommends libfmt-dev \
-    && cd sophus/ \
-    && mkdir -p build \
-    && cd build \
-    && cmake .. \
-    && make install -j16
-RUN git clone https://github.com/lcm-proj/lcm.git lcm/
-RUN cd lcm/ \
-    && mkdir -p build \
-    && cd build \
-    && cmake .. \
-    && make install -j16
+
+
+
+
+
+
 
