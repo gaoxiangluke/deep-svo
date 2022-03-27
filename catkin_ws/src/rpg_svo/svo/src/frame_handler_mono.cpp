@@ -58,33 +58,53 @@ FrameHandlerMono::~FrameHandlerMono()
 void FrameHandlerMono::addImage(const cv::Mat& img, const double timestamp)
 {
   if(!startFrameProcessingCommon(timestamp))
+  {
+    // std::cout << "bad time stamp" << std::endl;
     return;
+  }
 
   // some cleanup from last iteration, can't do before because of visualization
+  // std::cout << "before doing some cleanup" << std::endl;
   core_kfs_.clear();
   overlap_kfs_.clear();
 
+  // std::cout << "before creating new image pyramid" << std::endl;
   // create new frame
   SVO_START_TIMER("pyramid_creation");
   new_frame_.reset(new Frame(cam_, img.clone(), timestamp));
   SVO_STOP_TIMER("pyramid_creation");
 
   // process frame
+  // std::cout << "before processing frame" << std::endl;
   UpdateResult res = RESULT_FAILURE;
   if(stage_ == STAGE_DEFAULT_FRAME)
+  {
+    std::cout << "processing frame" << std::endl;
     res = processFrame();
+  }
   else if(stage_ == STAGE_SECOND_FRAME)
+  {
+    std::cout << "processing second frame" << std::endl;
     res = processSecondFrame();
+  }
   else if(stage_ == STAGE_FIRST_FRAME)
+  {
+    std::cout << "processing first frame" << std::endl;
     res = processFirstFrame();
+  }
   else if(stage_ == STAGE_RELOCALIZING)
+  {
+    std::cout << "relocalizing frame" << std::endl;
     res = relocalizeFrame(SE3(Matrix3d::Identity(), Vector3d::Zero()),
                           map_.getClosestKeyframe(last_frame_));
+  }
 
   // set last frame
+  // std::cout << "before reseting new frame" << std::endl;
   last_frame_ = new_frame_;
   new_frame_.reset();
   // finish processing
+  // std::cout << "before finishing frame processing common" << std::endl;
   finishFrameProcessingCommon(last_frame_->id_, res, last_frame_->nObs());
 }
 
@@ -92,9 +112,15 @@ FrameHandlerMono::UpdateResult FrameHandlerMono::processFirstFrame()
 {
   new_frame_->T_f_w_ = SE3(Matrix3d::Identity(), Vector3d::Zero());
   if(klt_homography_init_.addFirstFrame(new_frame_) == initialization::FAILURE)
+  {
+    // std::cout << "initialization failed" << std::endl;
     return RESULT_NO_KEYFRAME;
+  }
+  // std::cout << "Before setting keyframe" << std::endl;
   new_frame_->setKeyframe();
+  // std::cout << "Before adding keyframe to map" << std::endl;
   map_.addKeyframe(new_frame_);
+  // std::cout << "Before entering the second frame stage" << std::endl;
   stage_ = STAGE_SECOND_FRAME;
   SVO_INFO_STREAM("Init: Selected first frame.");
   return RESULT_IS_KEYFRAME;
@@ -129,9 +155,11 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processSecondFrame()
 FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
 {
   // Set initial pose TODO use prior
+  // std::cout << "Before setting initial pose prior" << std::endl;
   new_frame_->T_f_w_ = last_frame_->T_f_w_;
 
   // sparse image align
+  // std::cout << "Before sparasely aligning image" << std::endl;
   SVO_START_TIMER("sparse_img_align");
   SparseImgAlign img_align(Config::kltMaxLevel(), Config::kltMinLevel(),
                            30, SparseImgAlign::GaussNewton, false, false);
@@ -141,6 +169,7 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
   SVO_DEBUG_STREAM("Img Align:\t Tracked = " << img_align_n_tracked);
 
   // map reprojection & feature alignment
+  // std::cout << "Before feature alignment" << std::endl;
   SVO_START_TIMER("reproject");
   reprojector_.reprojectMap(new_frame_, overlap_kfs_);
   SVO_STOP_TIMER("reproject");
@@ -157,6 +186,7 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
   }
 
   // pose optimization
+  // std::cout << "Before pose optimizer" << std::endl;
   SVO_START_TIMER("pose_optimizer");
   size_t sfba_n_edges_final;
   double sfba_thresh, sfba_error_init, sfba_error_final;
@@ -168,14 +198,20 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
   SVO_DEBUG_STREAM("PoseOptimizer:\t ErrInit = "<<sfba_error_init<<"px\t thresh = "<<sfba_thresh);
   SVO_DEBUG_STREAM("PoseOptimizer:\t ErrFin. = "<<sfba_error_final<<"px\t nObsFin. = "<<sfba_n_edges_final);
   if(sfba_n_edges_final < 20)
+  {
+    // std::cout << "Pose optimizer failed, return RESULT_FAILURE" << std::endl;
     return RESULT_FAILURE;
+  }
+
 
   // structure optimization
+  // std::cout << "Before point optimizer" << std::endl;
   SVO_START_TIMER("point_optimizer");
   optimizeStructure(new_frame_, Config::structureOptimMaxPts(), Config::structureOptimNumIter());
   SVO_STOP_TIMER("point_optimizer");
 
   // select keyframe
+  // std::cout << "Before inserting new frame" << std::endl;
   core_kfs_.insert(new_frame_);
   setTrackingQuality(sfba_n_edges_final);
   if(tracking_quality_ == TRACKING_INSUFFICIENT)
@@ -216,7 +252,7 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
                      "Error {"<<loba_err_init<<", "<<loba_err_fin<<"}");
   }
 #endif
-
+  // std::cout << "Before initializing new depth filter" << std::endl;
   // init new depth-filters
   depth_filter_->addKeyframe(new_frame_, depth_mean, 0.5*depth_min);
 

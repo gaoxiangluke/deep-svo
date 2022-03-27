@@ -33,12 +33,21 @@ Frame::Frame(vk::AbstractCamera* cam, const cv::Mat& img, double timestamp) :
     id_(frame_counter_++),
     timestamp_(timestamp),
     cam_(cam),
+    input_frame_(img),
     key_pts_(5),
     is_keyframe_(false),
     v_kf_(NULL)
 {
   initFrame(img);
 }
+
+// Deep copy
+Frame::Frame(const FramePtr &frame) :
+    id_(frame->id_), timestamp_(frame->timestamp_), cam_(frame->cam_), input_frame_(frame->input_frame_),
+    T_f_w_(frame->T_f_w_), Cov_(frame->Cov_), img_pyr_(frame->img_pyr_), fts_(frame->fts_),
+    key_pts_(frame->key_pts_), is_keyframe_(frame->is_keyframe_),
+    v_kf_(frame->v_kf_), last_published_ts_(frame->last_published_ts_)
+{}
 
 Frame::~Frame()
 {
@@ -47,21 +56,32 @@ Frame::~Frame()
 
 void Frame::initFrame(const cv::Mat& img)
 {
-  // check image
-  if(img.empty() || img.type() != CV_8UC1 || img.cols != cam_->width() || img.rows != cam_->height())
-    throw std::runtime_error("Frame: provided image has not the same size as the camera model or image is not grayscale");
-
+  cv::Mat image;
+  // check image ()
+  if(img.empty()  || img.cols != cam_->width() || img.rows != cam_->height())
+    throw std::runtime_error("Frame: provided image has not the same size as the camera model");
+  else if (img.type() != CV_8UC1)
+  {
+    cvtColor(img, image, CV_RGB2GRAY);
+  }
+  else
+    image = img;
   // Set keypoints to NULL
   std::for_each(key_pts_.begin(), key_pts_.end(), [&](Feature* ftr){ ftr=NULL; });
 
   // Build Image Pyramid
-  frame_utils::createImgPyramid(img, max(Config::nPyrLevels(), Config::kltMaxLevel()+1), img_pyr_);
+  frame_utils::createImgPyramid(image, max(Config::nPyrLevels(), Config::kltMaxLevel()+1), img_pyr_);
 }
 
 void Frame::setKeyframe()
 {
   is_keyframe_ = true;
   setKeyPoints();
+}
+
+void Frame::setNotKeyframe()
+{
+  is_keyframe_ = false;
 }
 
 void Frame::addFeature(Feature* ftr)
@@ -157,9 +177,10 @@ void createImgPyramid(const cv::Mat& img_level_0, int n_levels, ImgPyr& pyr)
 {
   pyr.resize(n_levels);
   pyr[0] = img_level_0;
+
   for(int i=1; i<n_levels; ++i)
   {
-    pyr[i] = cv::Mat(pyr[i-1].rows/2, pyr[i-1].cols/2, CV_8U);
+    pyr[i] = cv::Mat(floor(pyr[i-1].rows/2), floor(pyr[i-1].cols/2), CV_8U);
     vk::halfSample(pyr[i-1], pyr[i]);
   }
 }

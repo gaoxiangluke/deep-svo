@@ -51,6 +51,14 @@ public:
   OmniCamera(string calibFile);
   ~OmniCamera();
 
+  // Not used
+  virtual void
+  validReprojection(const Vector3d& xyz, cv::Point2f& uv, bool& valid) const;
+
+  //Not used
+  virtual Vector3d
+  cam2world(const Vector2d& px, const cv::Mat& depthmap) const;
+
   virtual Vector3d
   cam2world(const double& x, const double& y) const;
 
@@ -74,6 +82,12 @@ public:
   virtual double errorMultiplier() const
   {
     return error_multiplier_;
+  }
+
+  // Not used
+  virtual Matrix3d get_K() const
+  {
+    return Matrix3d::Identity();
   }
 
 };

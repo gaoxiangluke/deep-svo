@@ -42,7 +42,7 @@ void halfSampleSSE2(const unsigned char* in, unsigned char* out, int w, int h)
     nextRow += w;
   }
 }
-#endif 
+#endif
 
 #ifdef __ARM_NEON__
 void halfSampleNEON( const cv::Mat& in, cv::Mat& out )
@@ -70,7 +70,7 @@ void halfSampleNEON( const cv::Mat& in, cv::Mat& out )
 void
 halfSample(const cv::Mat& in, cv::Mat& out)
 {
-  assert( in.rows/2==out.rows && in.cols/2==out.cols);
+  assert( floor(in.rows/2)==out.rows && floor(in.cols/2)==out.cols);
   assert( in.type()==CV_8U && out.type()==CV_8U);
 
 #ifdef __SSE2__
@@ -79,8 +79,8 @@ halfSample(const cv::Mat& in, cv::Mat& out)
     halfSampleSSE2(in.data, out.data, in.cols, in.rows);
     return;
   }
-#endif 
-#ifdef __ARM_NEON__ 
+#endif
+#ifdef __ARM_NEON__
   if( (in.cols % 16) == 0 )
   {
     halfSampleNEON(in, out);
@@ -291,5 +291,3 @@ void convertRawDepthImageSse_16u_to_32f(cv::Mat& depth_16u, cv::Mat& depth_32f, 
 #endif
 
 }
-
-

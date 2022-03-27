@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <svo/config.h>
 #include <stdexcept>
 #include <svo/pose_optimizer.h>
 #include <svo/frame.h>
@@ -21,6 +22,7 @@
 #include <svo/point.h>
 #include <vikit/robust_cost.h>
 #include <vikit/math_utils.h>
+#include <opencv2/core/eigen.hpp> // eigen2cv
 
 namespace svo {
 namespace pose_optimizer {

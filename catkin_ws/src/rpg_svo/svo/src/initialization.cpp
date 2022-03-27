@@ -29,9 +29,11 @@ namespace initialization {
 InitResult KltHomographyInit::addFirstFrame(FramePtr frame_ref)
 {
   reset();
+  // std::cout << "Before feature detection" << std::endl;
   detectFeatures(frame_ref, px_ref_, f_ref_);
   if(px_ref_.size() < 100)
   {
+    // std::cout << "Before reporting feature extraction failure" << std::endl;
     SVO_WARN_STREAM_THROTTLE(2.0, "First image has less than 100 features. Retry in more textured environment.");
     return FAILURE;
   }
@@ -42,11 +44,16 @@ InitResult KltHomographyInit::addFirstFrame(FramePtr frame_ref)
 
 InitResult KltHomographyInit::addSecondFrame(FramePtr frame_cur)
 {
+  // std::cout << "Before doing klt tracking" << std::endl;
   trackKlt(frame_ref_, frame_cur, px_ref_, px_cur_, f_ref_, f_cur_, disparities_);
   SVO_INFO_STREAM("Init: KLT tracked "<< disparities_.size() <<" features");
 
   if(disparities_.size() < Config::initMinTracked())
+  {
+    // std::cout << "disparities size is smaller than the minimum tracked feature" << std::endl;
     return FAILURE;
+  }
+
 
   double disparity = vk::getMedian(disparities_);
   SVO_INFO_STREAM("Init: KLT "<<disparity<<"px average disparity.");
@@ -110,11 +117,16 @@ void detectFeatures(
     vector<Vector3d>& f_vec)
 {
   Features new_features;
+  // std::cout << "before initializing FAST detection" << std::endl;
+  // std::cout << "params: " << frame->img().cols << "," << frame->img().rows << "," << Config::gridSize() << "," << Config::nPyrLevels() << std::endl;
   feature_detection::FastDetector detector(
       frame->img().cols, frame->img().rows, Config::gridSize(), Config::nPyrLevels());
+  // std::cout << "before doing FAST detection" << std::endl;
+  // std::cout << "params: " << frame.get() << "," << frame->img_pyr_.size() << "," << Config::triangMinCornerScore() << "," << std::endl;
   detector.detect(frame.get(), frame->img_pyr_, Config::triangMinCornerScore(), new_features);
 
   // now for all maximum corners, initialize a new seed
+  // std::cout << "before initializing new seed" << std::endl;
   px_vec.clear(); px_vec.reserve(new_features.size());
   f_vec.clear(); f_vec.reserve(new_features.size());
   std::for_each(new_features.begin(), new_features.end(), [&](Feature* ftr){

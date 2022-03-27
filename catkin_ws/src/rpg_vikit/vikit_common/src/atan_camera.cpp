@@ -46,6 +46,14 @@ ATANCamera::
 ~ATANCamera()
 {}
 
+void ATANCamera::
+validReprojection(const Vector3d& xyz, cv::Point2f& uv, bool& valid) const
+{}
+
+Vector3d ATANCamera::
+cam2world(const Vector2d& px, const cv::Mat& depthmap) const
+{ return Vector3d::Zero(); }
+
 Vector3d ATANCamera::
 cam2world(const double& x, const double& y) const
 {

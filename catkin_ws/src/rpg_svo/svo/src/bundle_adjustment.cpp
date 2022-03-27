@@ -176,7 +176,13 @@ void localBA(
     while(it_obs!=(*it_pt)->obs_.end())
     {
       Vector2d error = vk::project2d((*it_obs)->f) - vk::project2d((*it_obs)->frame->w2f((*it_pt)->pos_));
-
+      // if (error.array().isNaN().any()) // if any of the 2d vector is NaN, don't add the vertex
+      if (isNaN(error))
+      {
+        ++it_obs;
+        continue;
+      }
+      // std::cout << "(DEBUG) Reprojected error: " << error << ", isNan: " << error.array().isNaN() << std::endl;
       if((*it_obs)->frame->v_kf_ == NULL)
       {
         // frame does not have a vertex yet -> it belongs to the neib kfs and
@@ -200,7 +206,7 @@ void localBA(
       ++it_obs;
     }
   }
-
+  // std::cout << "(DEBUG) Number of vertices: " << optimizer.vertices().size() << std::endl;
   // structure only
   g2o::StructureOnlySolver<3> structure_only_ba;
   g2o::OptimizableGraph::VertexContainer points;
@@ -210,12 +216,14 @@ void localBA(
       if (v->dimension() == 3 && v->edges().size() >= 2)
         points.push_back(v);
   }
+  // std::cout << "(DEBUG) number of points: " << points.size() << std::endl;
   structure_only_ba.calc(points, 10);
-
+  // std::cout << "(DEBUG) Added points (structure only BA)" << std::endl;
   // Optimization
   if(Config::lobaNumIter() > 0)
     runSparseBAOptimizer(&optimizer, Config::lobaNumIter(), init_error, final_error);
 
+  // std::cout << "(DEBUG) run SparseBAOptimizer" << std::endl;
   // Update Keyframes
   for(set<FramePtr>::iterator it = core_kfs->begin(); it != core_kfs->end(); ++it)
   {

@@ -1,8 +1,10 @@
 ################################################################################
 # user build settings
 
+SET(ONLINE_MODE FALSE)
+
 SET(TRACE TRUE)
-SET(HAVE_G2O FALSE) 
+SET(HAVE_G2O TRUE)
 SET(USE_ROS TRUE) # Set FALSE if you want to build this package without Catkin
 SET(DEBUG_OUTPUT FALSE) # Only relevant if build without ROS
 
@@ -44,12 +46,15 @@ ELSE()
 ENDIF()
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
 
-# Add plain cmake packages 
+# Add plain cmake packages
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(Eigen REQUIRED)
 FIND_PACKAGE(Sophus REQUIRED)
 FIND_PACKAGE(fast REQUIRED)
 FIND_PACKAGE(Boost REQUIRED COMPONENTS thread system)
+
+# Define home directory
+set(HOME $ENV{HOME})
 
 IF(USE_ROS)
   FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules vikit_common vikit_ros)
@@ -76,7 +81,7 @@ INCLUDE_DIRECTORIES(
 )
 
 # Set link libraries
-LIST(APPEND LINK_LIBS 
+LIST(APPEND LINK_LIBS
   ${OpenCV_LIBS}
   ${Sophus_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -94,12 +99,14 @@ ENDIF()
 # Set sourcefiles
 LIST(APPEND SOURCEFILES
   src/frame_handler_mono.cpp
+  src/frame_handler_monodepth.cpp
   src/frame_handler_base.cpp
   src/frame.cpp
   src/point.cpp
   src/map.cpp
   src/pose_optimizer.cpp
   src/initialization.cpp
+  src/initialization_monodepth.cpp
   src/matcher.cpp
   src/reprojector.cpp
   src/feature_alignment.cpp
@@ -112,8 +119,11 @@ LIST(APPEND SOURCEFILES
 IF(HAVE_G2O)
   FIND_PACKAGE(G2O REQUIRED)
   INCLUDE_DIRECTORIES(
-    ${G2O_INCLUDE_DIR}
+    #${G2O_INCLUDE_DIR}
     /usr/include/suitesparse # for cholmod
+  )
+   INCLUDE_DIRECTORIES(
+    /opt/ros/kinetic/includeg2o # for g2o
   )
   LIST(APPEND LINK_LIBS
     ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY} ${G2O_SOLVER_CHOLMOD} ${G2O_SOLVER_CSPARSE} ${G2O_SOLVER_DENSE}
@@ -122,30 +132,21 @@ IF(HAVE_G2O)
   LIST(APPEND SOURCEFILES src/bundle_adjustment.cpp)
 ENDIF(HAVE_G2O)
 
+IF(ONLINE_MODE)
+  # Include MonoDepth header directory
+  set(monodepth_INCLUDE_DIRS ${HOME}/catkin_ws/src/CNN-VO/monodepth/install/include)
+  INCLUDE_DIRECTORIES(${monodepth_INCLUDE_DIRS})
+
+  LIST(APPEND SOURCEFILES src/frame_handler_online.cpp)
+ENDIF(ONLINE_MODE)
+
+
 # Create svo library
 ADD_LIBRARY(svo SHARED ${SOURCEFILES})
 TARGET_LINK_LIBRARIES(svo ${LINK_LIBS})
 
-################################################################################
-# TESTS
-
-ADD_EXECUTABLE(test_feature_align test/test_feature_alignment.cpp)
-TARGET_LINK_LIBRARIES(test_feature_align svo)
-
-ADD_EXECUTABLE(test_pipeline test/test_pipeline.cpp)
-TARGET_LINK_LIBRARIES(test_pipeline svo)
-
-ADD_EXECUTABLE(test_matcher test/test_matcher.cpp)
-TARGET_LINK_LIBRARIES(test_matcher svo)
-
-ADD_EXECUTABLE(test_feature_detection test/test_feature_detection.cpp)
-TARGET_LINK_LIBRARIES(test_feature_detection svo)
-
-ADD_EXECUTABLE(test_depth_filter test/test_depth_filter.cpp)
-TARGET_LINK_LIBRARIES(test_depth_filter svo)
-
-ADD_EXECUTABLE(test_sparse_img_align test/test_sparse_img_align.cpp)
-TARGET_LINK_LIBRARIES(test_sparse_img_align svo)
-
-ADD_EXECUTABLE(test_pose_optimizer test/test_pose_optimizer.cpp)
-TARGET_LINK_LIBRARIES(test_pose_optimizer svo) 
+IF(ONLINE_MODE)
+  # Include monodepth library (pre-built)
+  TARGET_LINK_LIBRARIES(svo ${HOME}/catkin_ws/src/CNN-VO/monodepth/install/lib/libmonodepth_static.a)
+  TARGET_LINK_LIBRARIES(svo ${HOME}/tensorflow/local/lib/libtensorflow_all.so)
+ENDIF(ONLINE_MODE)

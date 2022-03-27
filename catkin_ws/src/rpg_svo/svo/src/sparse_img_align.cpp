@@ -66,10 +66,10 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
     if(verbose_)
       printf("\nPYRAMID LEVEL %i\n---------------\n", level_);
     optimize(T_cur_from_ref);
+
+    level += 1;
   }
   cur_frame_->T_f_w_ = T_cur_from_ref * ref_frame_->T_f_w_;
-
-
 
   return n_meas_/patch_area_;
 }
@@ -267,8 +267,9 @@ void SparseImgAlign::finishIteration()
     cv::namedWindow("residuals", CV_WINDOW_AUTOSIZE);
     cv::imshow("residuals", resimg_*10);
     cv::waitKey(0);
+    cv::imwrite(std::to_string(level) + "_" + std::to_string(counter) + ".png", resimg_*2550);
+    counter += 1;
   }
 }
 
 } // namespace svo
-

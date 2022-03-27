@@ -119,6 +119,12 @@ public:
   /// If within one frame, this amount of features are dropped. Tracking quality is bad.
   static int& qualityMaxFtsDrop() { return getInstance().quality_max_drop_fts; }
 
+  /// The number of samples to be picked for opticalFlowToOdomRANSAC
+  static size_t& odomNumInliers() { return getInstance().odom_n_inliers; }
+
+  /// The number of iteration of RANSAC for opticalFlowToOdomRANSAC.
+  static size_t& odomNumIter() { return getInstance().odom_n_iter; }
+
 private:
   Config();
   Config(Config const&);
@@ -152,6 +158,8 @@ private:
   size_t max_fts;
   size_t quality_min_fts;
   int quality_max_drop_fts;
+  size_t odom_n_inliers;
+  size_t odom_n_iter;
 };
 
 } // namespace svo

@@ -51,7 +51,9 @@ Config::Config() :
     img_imu_delay(vk::getParam<double>("svo/img_imu_delay", 0.0)),
     max_fts(vk::getParam<int>("svo/max_fts", 120)),
     quality_min_fts(vk::getParam<int>("svo/quality_min_fts", 50)),
-    quality_max_drop_fts(vk::getParam<int>("svo/quality_max_drop_fts", 40))
+    quality_max_drop_fts(vk::getParam<int>("svo/quality_max_drop_fts", 40)),
+    odom_n_inliers(vk::getParam<int>("svo/odom_n_inliers", 10)),
+    odom_n_iter(vk::getParam<int>("svo/odom_n_iter", 10))
 #else
     trace_name("svo"),
     trace_dir("/tmp"),
@@ -81,7 +83,9 @@ Config::Config() :
     img_imu_delay(0.0),
     max_fts(120),
     quality_min_fts(50),
-    quality_max_drop_fts(40)
+    quality_max_drop_fts(40),
+    odom_n_inliers(10),
+    odom_n_iter(10)
 #endif
 {}
 
@@ -92,4 +96,3 @@ Config& Config::getInstance()
 }
 
 } // namespace svo
-

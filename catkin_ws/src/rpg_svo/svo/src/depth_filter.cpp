@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
+#include <random>
 #include <vikit/math_utils.h>
 #include <vikit/abstract_camera.h>
 #include <vikit/vision.h>
@@ -45,6 +46,18 @@ Seed::Seed(Feature* ftr, float depth_mean, float depth_min) :
     sigma2(z_range*z_range/36)
 {}
 
+Seed::Seed(Feature* ftr, float depth_mean, float depth_min, float depth_real) :
+    batch_id(batch_counter),
+    id(seed_counter++),
+    ftr(ftr),
+    a(10),
+    b(10),
+    mu(1.0 / depth_real),
+    d(depth_real),
+    z_range(1.0/depth_min),
+    sigma2(1./(36*depth_real*depth_real))
+{}
+
 DepthFilter::DepthFilter(feature_detection::DetectorPtr feature_detector, callback_t seed_converged_cb) :
     feature_detector_(feature_detector),
     seed_converged_cb_(seed_converged_cb),
@@ -52,7 +65,24 @@ DepthFilter::DepthFilter(feature_detection::DetectorPtr feature_detector, callba
     thread_(NULL),
     new_keyframe_set_(false),
     new_keyframe_min_depth_(0.0),
-    new_keyframe_mean_depth_(0.0)
+    new_keyframe_mean_depth_(0.0),
+    use_cnn_(false)
+{}
+
+DepthFilter::DepthFilter(feature_detection::DetectorPtr feature_detector,
+  callback_t seed_converged_cb, const int& img_width,
+  const int& img_height, const int& num_kfs_in_queue) :
+    feature_detector_(feature_detector),
+    seed_converged_cb_(seed_converged_cb),
+    seeds_updating_halt_(false),
+    thread_(NULL),
+    new_keyframe_set_(false),
+    new_keyframe_min_depth_(0.0),
+    new_keyframe_mean_depth_(0.0),
+    use_cnn_(true),
+    img_width_(img_width),
+    img_height_(img_height),
+    num_kfs_in_queue_(num_kfs_in_queue)
 {}
 
 DepthFilter::~DepthFilter()
@@ -61,9 +91,25 @@ DepthFilter::~DepthFilter()
   SVO_INFO_STREAM("DepthFilter destructed.");
 }
 
+void DepthFilter::setUseCNN()
+{
+  use_cnn_ = true;
+}
+
+void DepthFilter::setNotUseCNN()
+{
+  use_cnn_ = false;
+}
+
 void DepthFilter::startThread()
 {
   thread_ = new boost::thread(&DepthFilter::updateSeedsLoop, this);
+}
+
+void DepthFilter::setImgSize(const int& height, const int& width)
+{
+  img_width_ = width;
+  img_height_ = height;
 }
 
 void DepthFilter::stopThread()
@@ -83,9 +129,10 @@ void DepthFilter::addFrame(FramePtr frame)
 {
   if(thread_ != NULL)
   {
+    // seeds_updating_halt_ = true;
     {
       lock_t lock(frame_queue_mut_);
-      if(frame_queue_.size() > 2)
+      if(frame_queue_.size() > (unsigned int)num_kfs_in_queue_ + 2) // default: 2
         frame_queue_.pop();
       frame_queue_.push(frame);
     }
@@ -94,6 +141,23 @@ void DepthFilter::addFrame(FramePtr frame)
   }
   else
     updateSeeds(frame);
+}
+
+void DepthFilter::addKeyframe(FramePtr frame, double depth_mean, double depth_min, const cv::Mat& depthmap)
+{
+  new_keyframe_min_depth_ = depth_min;
+  new_keyframe_mean_depth_ = depth_mean;
+  // new_keyframe_depthmap_ = depthmap;
+  if(thread_ != NULL)
+  {
+    new_keyframe_ = frame;
+    new_keyframe_depthmap_ = depthmap.clone();
+    new_keyframe_set_ = true;
+    seeds_updating_halt_ = true;
+    frame_queue_cond_.notify_one();
+  }
+  else
+    initializeSeedsWithDepths(frame, depthmap);
 }
 
 void DepthFilter::addKeyframe(FramePtr frame, double depth_mean, double depth_min)
@@ -111,6 +175,34 @@ void DepthFilter::addKeyframe(FramePtr frame, double depth_mean, double depth_mi
     initializeSeeds(frame);
 }
 
+void DepthFilter::initializeSeedsWithDepths(FramePtr frame, const cv::Mat& depthmap)
+{
+  Features new_features;
+  feature_detector_->setExistingFeatures(frame->fts_);
+  feature_detector_->detect(frame.get(), frame->img_pyr_,
+                            Config::triangMinCornerScore(), new_features);
+
+  // initialize a seed for every new feature
+  seeds_updating_halt_ = true;
+  lock_t lock(seeds_mut_); // by locking the updateSeeds function stops
+  ++Seed::batch_counter;
+  std::for_each(new_features.begin(), new_features.end(), [&](Feature* ftr){
+    int offset = (int)ftr->px[1] * img_width_ + (int)ftr->px[0];
+    if (offset < img_width_ * img_height_) // to make sure that the pointer is not pointing outside the depthmap
+    {
+      float* depthmap_ptr = (float*)depthmap.data + offset;
+      float depth_real = *depthmap_ptr;
+
+      Seed seed(ftr, new_keyframe_mean_depth_, new_keyframe_min_depth_, depth_real);
+      seeds_.push_back(seed);
+    }
+  });
+
+  if(options_.verbose)
+    SVO_INFO_STREAM("DepthFilter: Initialized "<<new_features.size()<<" new seeds");
+  seeds_updating_halt_ = false;
+}
+
 void DepthFilter::initializeSeeds(FramePtr frame)
 {
   Features new_features;
@@ -123,13 +215,15 @@ void DepthFilter::initializeSeeds(FramePtr frame)
   lock_t lock(seeds_mut_); // by locking the updateSeeds function stops
   ++Seed::batch_counter;
   std::for_each(new_features.begin(), new_features.end(), [&](Feature* ftr){
-    seeds_.push_back(Seed(ftr, new_keyframe_mean_depth_, new_keyframe_min_depth_));
+    Seed seed(ftr, new_keyframe_mean_depth_, new_keyframe_min_depth_);
+    seeds_.push_back(seed);
   });
 
   if(options_.verbose)
     SVO_INFO_STREAM("DepthFilter: Initialized "<<new_features.size()<<" new seeds");
   seeds_updating_halt_ = false;
 }
+
 
 void DepthFilter::removeKeyframe(FramePtr frame)
 {
@@ -171,6 +265,7 @@ void DepthFilter::updateSeedsLoop()
   while(!boost::this_thread::interruption_requested())
   {
     FramePtr frame;
+    cv::Mat depth;
     {
       lock_t lock(frame_queue_mut_);
       while(frame_queue_.empty() && new_keyframe_set_ == false)
@@ -181,6 +276,7 @@ void DepthFilter::updateSeedsLoop()
         seeds_updating_halt_ = false;
         clearFrameQueue();
         frame = new_keyframe_;
+        depth = new_keyframe_depthmap_;
       }
       else
       {
@@ -190,7 +286,12 @@ void DepthFilter::updateSeedsLoop()
     }
     updateSeeds(frame);
     if(frame->isKeyframe())
-      initializeSeeds(frame);
+    {
+      if (use_cnn_)
+        initializeSeedsWithDepths(frame, depth);
+      else
+        initializeSeeds(frame);
+    }
   }
 }
 
@@ -231,13 +332,18 @@ void DepthFilter::updateSeeds(FramePtr frame)
     }
 
     // we are using inverse depth coordinates
-    float z_inv_min = it->mu + sqrt(it->sigma2);
-    float z_inv_max = max(it->mu - sqrt(it->sigma2), 0.00000001f);
-    double z;
+    float z_inv_min, z_inv_max, z_inv_mean;
+    z_inv_mean = it->mu;
+    z_inv_min = z_inv_mean + sqrt(it->sigma2);
+    z_inv_max = max(z_inv_mean - sqrt(it->sigma2), 0.00000001f);
+
+    double z = 0;
+    int counter = 0;
     if(!matcher_.findEpipolarMatchDirect(
-        *it->ftr->frame, *frame, *it->ftr, 1.0/it->mu, 1.0/z_inv_min, 1.0/z_inv_max, z))
+        *it->ftr->frame, *frame, *it->ftr, 1.0/z_inv_mean, 1.0/z_inv_min, 1.0/z_inv_max, z))
     {
       it->b++; // increase outlier probability when no match was found
+
       ++it;
       ++n_failed_matches;
       continue;
@@ -257,13 +363,16 @@ void DepthFilter::updateSeeds(FramePtr frame)
       feature_detector_->setGridOccpuancy(matcher_.px_cur_);
     }
 
-    // if the seed has converged, we initialize a new candidate point and remove the seed
-    if(sqrt(it->sigma2) < it->z_range/options_.seed_convergence_sigma2_thresh)
+    if(sqrt(it->sigma2) < it->z_range/options_.seed_convergence_sigma2_thresh) // seed_convergence_sigma2_thresh: 200
     {
       assert(it->ftr->point == NULL); // TODO this should not happen anymore
       Vector3d xyz_world(it->ftr->frame->T_f_w_.inverse() * (it->ftr->f * (1.0/it->mu)));
       Point* point = new Point(xyz_world, it->ftr);
+
       it->ftr->point = point;
+      if (options_.verbose) std::cout << "seed converged!!!" << " " << xyz_world.transpose() << " " << sqrt(it->sigma2) << " "
+                                      << it->z_range/options_.seed_convergence_sigma2_thresh << " " << it->z_range << " "
+                                      << options_.seed_convergence_sigma2_thresh << std::endl;
       /* FIXME it is not threadsafe to add a feature to the frame here.
       if(frame->isKeyframe())
       {
@@ -306,19 +415,30 @@ void DepthFilter::getSeedsCopy(const FramePtr& frame, std::list<Seed>& seeds)
   }
 }
 
-void DepthFilter::updateSeed(const float x, const float tau2, Seed* seed)
+void DepthFilter::updateSeed(const float x, const float tau2, Seed* seed) // x: depth
 {
   float norm_scale = sqrt(seed->sigma2 + tau2);
-  if(std::isnan(norm_scale))
+  if(std::isnan(norm_scale)|| std::isinf(norm_scale)) // added isinf to prevent error
     return;
-  boost::math::normal_distribution<float> nd(seed->mu, norm_scale);
+
+  // Filtered depth is the weighted average of Gaussian distribution (for inlier) and Uniform distribution (for outlier)
+  // Only applicable to CNN-VO; it is not working for SVO
+  // Calculate min-max for sample from uniform distribution
+  float min_depth = 1./(seed->mu + sqrt(seed->sigma2));
+  float max_depth = 1./max((seed->mu - sqrt(seed->sigma2)), 0.006666f); // Max depth: 150m if it is negative
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> uni_dis(min_depth, max_depth);
+
+  boost::math::normal_distribution<float> nd(seed->mu, norm_scale); // Error in function boost::math::normal_distribution<float>::normal_distribution: Scale parameter is inf, but must be > 0 !
   float s2 = 1./(1./seed->sigma2 + 1./tau2);
   float m = s2*(seed->mu/seed->sigma2 + x/tau2);
   float C1 = seed->a/(seed->a+seed->b) * boost::math::pdf(nd, x);
-  float C2 = seed->b/(seed->a+seed->b) * 1./seed->z_range;
+  float C2 = (use_cnn_) ? seed->b/(seed->a+seed->b) * uni_dis(gen) : seed->b/(seed->a+seed->b) * 1./seed->z_range;
   float normalization_constant = C1 + C2;
   C1 /= normalization_constant;
   C2 /= normalization_constant;
+
   float f = C1*(seed->a+1.)/(seed->a+seed->b+1.) + C2*seed->a/(seed->a+seed->b+1.);
   float e = C1*(seed->a+1.)*(seed->a+2.)/((seed->a+seed->b+1.)*(seed->a+seed->b+2.))
           + C2*seed->a*(seed->a+1.0f)/((seed->a+seed->b+1.0f)*(seed->a+seed->b+2.0f));

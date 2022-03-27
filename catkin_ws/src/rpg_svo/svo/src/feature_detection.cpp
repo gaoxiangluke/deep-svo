@@ -31,7 +31,8 @@ AbstractDetector::AbstractDetector(
         n_pyr_levels_(n_pyr_levels),
         grid_n_cols_(ceil(static_cast<double>(img_width)/cell_size_)),
         grid_n_rows_(ceil(static_cast<double>(img_height)/cell_size_)),
-        grid_occupancy_(grid_n_cols_*grid_n_rows_, false)
+        grid_occupancy_(grid_n_cols_*grid_n_rows_, false),
+        verbose_(false)
 {}
 
 void AbstractDetector::resetGrid()
@@ -69,25 +70,34 @@ void FastDetector::detect(
     const double detection_threshold,
     Features& fts)
 {
+  if (verbose_) std::cout << "before initializing number of grids" << std::endl;
+  if (verbose_) std::cout << "Params: " << grid_n_cols_ << "," << grid_n_rows_ << "," << detection_threshold << std::endl;
   Corners corners(grid_n_cols_*grid_n_rows_, Corner(0,0,detection_threshold,0,0.0f));
+  if (verbose_) std::cout << "After detecting corners" << std::endl;
   for(int L=0; L<n_pyr_levels_; ++L)
   {
+    if (verbose_) std::cout << "before detecting corners at pyramid level: " << L << std::endl;
     const int scale = (1<<L);
+    if (verbose_) std::cout << "scale: " << scale << std::endl;
     vector<fast::fast_xy> fast_corners;
 #if __SSE2__
+      if (verbose_) std::cout << "if sse2" << std::endl;
       fast::fast_corner_detect_10_sse2(
           (fast::fast_byte*) img_pyr[L].data, img_pyr[L].cols,
           img_pyr[L].rows, img_pyr[L].cols, 20, fast_corners);
 #elif HAVE_FAST_NEON
+      if (verbose_) std::cout << "if have fast neon" << std::endl;
       fast::fast_corner_detect_9_neon(
           (fast::fast_byte*) img_pyr[L].data, img_pyr[L].cols,
           img_pyr[L].rows, img_pyr[L].cols, 20, fast_corners);
 #else
+      if (verbose_) std::cout << "else" << std::endl;
       fast::fast_corner_detect_10(
           (fast::fast_byte*) img_pyr[L].data, img_pyr[L].cols,
           img_pyr[L].rows, img_pyr[L].cols, 20, fast_corners);
 #endif
     vector<int> scores, nm_corners;
+    if (verbose_) std::cout << "before computing fast corner score" << std::endl;
     fast::fast_corner_score_10((fast::fast_byte*) img_pyr[L].data, img_pyr[L].cols, fast_corners, 20, scores);
     fast::fast_nonmax_3x3(fast_corners, scores, nm_corners);
 
@@ -105,8 +115,10 @@ void FastDetector::detect(
   }
 
   // Create feature for every corner that has high enough corner score
+  if (verbose_) std::cout << "before filtering the fast corners" << std::endl;
   std::for_each(corners.begin(), corners.end(), [&](Corner& c) {
     if(c.score > detection_threshold)
+      // std::cout << "adding new corner" << Vector2d(c.x, c.y)  << std::endl;
       fts.push_back(new Feature(frame, Vector2d(c.x, c.y), c.level));
   });
 
@@ -115,4 +127,3 @@ void FastDetector::detect(
 
 } // namespace feature_detection
 } // namespace svo
-

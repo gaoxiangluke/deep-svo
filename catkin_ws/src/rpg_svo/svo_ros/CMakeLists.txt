@@ -1,3 +1,10 @@
+################################################################################
+# user build settings
+
+SET(ONLINE_MODE FALSE)
+
+################################################################################
+
 SET(PROJECT_NAME svo_ros)
 PROJECT(${PROJECT_NAME})
 CMAKE_MINIMUM_REQUIRED (VERSION 2.8.3)
@@ -19,8 +26,11 @@ ELSE()
 ENDIF()
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
 
+# Define home directory
+set(HOME $ENV{HOME})
+
 # Add catkin and required ROS packages
-FIND_PACKAGE(catkin REQUIRED COMPONENTS 
+FIND_PACKAGE(catkin REQUIRED COMPONENTS
   roscpp
   cmake_modules
   nav_msgs
@@ -36,7 +46,7 @@ FIND_PACKAGE(catkin REQUIRED COMPONENTS
   vikit_ros
 )
 
-# Add plain cmake packages 
+# Add plain cmake packages
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(Eigen REQUIRED)
 FIND_PACKAGE(Sophus REQUIRED)
@@ -61,7 +71,7 @@ INCLUDE_DIRECTORIES(
 )
 
 # Set link libraries
-LIST(APPEND LINK_LIBS 
+LIST(APPEND LINK_LIBS
   ${OpenCV_LIBS}
   ${Sophus_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -71,9 +81,25 @@ LIST(APPEND LINK_LIBS
 # Create visualizer library
 ADD_LIBRARY(svo_visualizer src/visualizer.cpp)
 TARGET_LINK_LIBRARIES(svo_visualizer ${LINK_LIBS})
-                                 
-# Create Executables                      
+ADD_LIBRARY(svo_visualizer_monodepth src/visualizer_monodepth.cpp)
+TARGET_LINK_LIBRARIES(svo_visualizer_monodepth ${LINK_LIBS})
+
+IF(ONLINE_MODE)
+  # Include MonoDepth header directory
+  set(monodepth_INCLUDE_DIRS ${HOME}/catkin_ws/src/CNN-VO/monodepth/install/include) # modify the path if it is different
+  INCLUDE_DIRECTORIES(${monodepth_INCLUDE_DIRS})
+
+  ADD_LIBRARY(svo_visualizer_online src/visualizer_online.cpp)
+  TARGET_LINK_LIBRARIES(svo_visualizer_online ${LINK_LIBS})
+
+  ADD_EXECUTABLE(vo_monodepth_online src/vo_monodepth_online.cpp)
+  TARGET_LINK_LIBRARIES(vo_monodepth_online svo_visualizer_online)
+ENDIF(ONLINE_MODE)
+
+# Create Executables
+ADD_EXECUTABLE(vo_monodepth_offline src/vo_monodepth_offline.cpp)
+TARGET_LINK_LIBRARIES(vo_monodepth_offline svo_visualizer_monodepth)
 ADD_EXECUTABLE(vo src/vo_node.cpp)
 TARGET_LINK_LIBRARIES(vo svo_visualizer)
-ADD_EXECUTABLE(benchmark src/benchmark_node.cpp)
-TARGET_LINK_LIBRARIES(benchmark svo_visualizer)
+ADD_EXECUTABLE(test_readnpy src/test_readnpy.cpp)
+TARGET_LINK_LIBRARIES(test_readnpy svo_visualizer_monodepth)

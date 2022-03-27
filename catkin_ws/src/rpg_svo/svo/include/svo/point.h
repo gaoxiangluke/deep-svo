@@ -36,7 +36,7 @@ class Point : boost::noncopyable
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  
+
   enum PointType {
     TYPE_DELETED,
     TYPE_CANDIDATE,
@@ -69,6 +69,9 @@ public:
 
   /// Remove reference to a frame.
   bool deleteFrameRef(Frame* frame);
+
+  /// Update the 3D position
+  void updatePos(const Vector3d& pos);
 
   /// Initialize point normal. The inital estimate will point towards the frame.
   void initNormal();

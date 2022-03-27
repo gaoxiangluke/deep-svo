@@ -63,7 +63,8 @@ protected:
   bool display_;                  //!< display residual image.
   int max_level_;                 //!< coarsest pyramid level for the alignment.
   int min_level_;                 //!< finest pyramid level for the alignment.
-
+  int counter = 0;                //!< newly added to save the residuals images.
+  int level = 0;                  //!< newly added to save the residuals images
   // cache:
   Matrix<double, 6, Dynamic, ColMajor> jacobian_cache_;
   bool have_ref_patch_cache_;
