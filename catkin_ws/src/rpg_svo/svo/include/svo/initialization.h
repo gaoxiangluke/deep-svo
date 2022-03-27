@@ -22,6 +22,7 @@
 namespace svo {
 
 class FrameHandlerMono;
+// class FrameHandlerMonodepth;
 
 /// Bootstrapping the map from the first two views.
 namespace initialization {
@@ -31,6 +32,7 @@ enum InitResult { FAILURE, NO_KEYFRAME, SUCCESS };
 /// Tracks features using Lucas-Kanade tracker and then estimates a homography.
 class KltHomographyInit {
   friend class svo::FrameHandlerMono;
+  // friend class svo::FrameHandlerMonodepth;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 

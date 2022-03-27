@@ -19,7 +19,7 @@
 #include <svo/point.h>
 #include <svo/frame.h>
 #include <svo/feature.h>
- 
+
 namespace svo {
 
 int Point::point_counter_ = 0;
@@ -61,6 +61,11 @@ void Point::addFrameRef(Feature* ftr)
 {
   obs_.push_front(ftr);
   ++n_obs_;
+}
+
+void Point::updatePos(const Vector3d& pos)
+{
+  pos_ = pos;
 }
 
 Feature* Point::findFrameRef(Frame* frame)

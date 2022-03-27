@@ -34,6 +34,20 @@
 #include <vikit/camera_loader.h>
 #include <vikit/user_input_thread.h>
 
+#include<stdlib.h>
+
+
+#include <vector>
+#include <iostream>
+#include <sophus/se3.h>
+#include <svo/frame.h>
+#include <svo/feature.h>
+#include <svo/point.h>
+#include <svo/frame_handler_mono.h>
+
+
+std::string save_dir = std::getenv("HOME")+std::string("/results/CNN_VO");
+
 namespace svo {
 
 /// SVO Interface
@@ -54,6 +68,10 @@ public:
   void imgCb(const sensor_msgs::ImageConstPtr& msg);
   void processUserActions();
   void remoteKeyCb(const std_msgs::StringConstPtr& key_input);
+
+  void tracePose(const SE3& T_w_f, const double timestamp);
+  std::ofstream trace_est_pose_;
+   std::ofstream trace_est_pose_ATE;
 };
 
 VoNode::VoNode() :
@@ -81,6 +99,23 @@ VoNode::VoNode() :
                       vk::getParam<double>("svo/init_ty", 0.0),
                       vk::getParam<double>("svo/init_tz", 0.0)));
 
+
+
+   //saving
+  int tmp= system(("mkdir " + save_dir).c_str());
+  std::string trace_est_name(save_dir+"/traj_estimate.txt");
+  trace_est_pose_.open(trace_est_name.c_str());
+  if(trace_est_pose_.fail())
+    throw std::runtime_error("Could not create tracefile. Does folder exist?");
+
+
+  std::string trace_est_nameATE(save_dir+"/traj_estimateATE.txt");
+  trace_est_pose_ATE.open(trace_est_nameATE.c_str());
+  if(trace_est_pose_ATE.fail())
+    throw std::runtime_error("Could not create tracefile. Does folder exist?");
+
+
+
   // Init VO and start
   vo_ = new svo::FrameHandlerMono(cam_);
   vo_->start();
@@ -93,6 +128,34 @@ VoNode::~VoNode()
   if(user_input_thread_ != NULL)
     user_input_thread_->stop();
 }
+
+//added for saving
+
+
+void VoNode::tracePose(const SE3& T_w_f, const double timestamp)
+{
+  Quaterniond q(T_w_f.unit_quaternion());
+  Vector3d p(T_w_f.translation());
+  //trace_est_pose_.precision(15);
+  trace_est_pose_.setf(std::ios::scientific, std::ios::floatfield );
+  trace_est_pose_ << timestamp << " ";
+  
+
+  Matrix3d Rot_Matrix(T_w_f.rotation_matrix());
+  trace_est_pose_ << Rot_Matrix(0,0) << " " << Rot_Matrix(0,1) << " " << Rot_Matrix(0,2) << " " << p.x()<<" "
+                  << Rot_Matrix(1,0) << " " << Rot_Matrix(1,1) << " " << Rot_Matrix(1,2) << " " << p.y()<<" "
+                  << Rot_Matrix(2,0) << " " << Rot_Matrix(2,1) << " " << Rot_Matrix(2,2) << " " << p.z()<< std::endl;
+
+
+
+  trace_est_pose_ATE.setf(std::ios::scientific, std::ios::floatfield );
+  trace_est_pose_ATE << timestamp << " ";
+
+  trace_est_pose_ATE << p.x() << " " << p.y() << " " << p.z() << " "
+                 << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+
+}
+
 
 void VoNode::imgCb(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -112,6 +175,13 @@ void VoNode::imgCb(const sensor_msgs::ImageConstPtr& msg)
   if(publish_dense_input_)
     visualizer_.exportToDense(vo_->lastFrame());
 
+  //saving
+  //if(vo_->stage() == FrameHandlerMono::STAGE_DEFAULT_FRAME)
+
+  
+     // tracePose(vo_->lastFrame()->T_f_w_.inverse(), msg->header.stamp.toSec());
+
+    
   if(vo_->stage() == FrameHandlerMono::STAGE_PAUSED)
     usleep(100000);
 }
@@ -174,6 +244,18 @@ int main(int argc, char **argv)
     ros::spinOnce();
     // TODO check when last image was processed. when too long ago. publish warning that no msgs are received!
   }
+
+
+
+  for(auto it=vo_node.vo_->map().keyframes_.begin(), ite=vo_node.vo_->map().keyframes_.end();it!=ite; ++it)
+  {
+      vo_node.tracePose((*it)->T_f_w_.inverse(), (*it)->timestamp_);
+
+  }
+
+  printf("Result saved in file...\n");
+
+
 
   printf("SVO terminated.\n");
   return 0;

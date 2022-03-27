@@ -35,7 +35,7 @@ public:
   typedef pair<Point*, Feature*> PointCandidate;
   typedef list<PointCandidate> PointCandidateList;
 
-  /// The depth-filter is running in a parallel thread and fills the canidate list.
+  /// The depth-filter is running in a parallel thread and fills the candidate list.
   /// This mutex controls concurrent access to point_candidates.
   boost::mutex mut_;
 

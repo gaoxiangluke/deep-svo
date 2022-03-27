@@ -20,10 +20,23 @@ ELSE()
 ENDIF()
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
 
-# Add plain cmake packages 
+# Add plain cmake packages
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(Eigen REQUIRED)
 FIND_PACKAGE(Sophus REQUIRED)
+
+IF(USE_ROS)
+  FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp cmake_modules tf2 tf2_ros geometry_msgs)
+  catkin_package(
+    DEPENDS Eigen OpenCV Sophus
+    CATKIN_DEPENDS roscpp tf2 tf2_ros geometry_msgs
+    INCLUDE_DIRS include
+    LIBRARIES ${PROJECT_NAME}
+  )
+ELSE()
+  SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+  SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+ENDIF()
 
 # Include dirs
 INCLUDE_DIRECTORIES(
@@ -32,20 +45,6 @@ INCLUDE_DIRECTORIES(
   ${OpenCV_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
 )
-
-IF(USE_ROS)
-  FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp cmake_modules)
-  LIST(APPEND INCLUDE_DIRECTORIES ${catkin_INCLUDE_DIRS})
-  catkin_package(
-    DEPENDS Eigen OpenCV Sophus
-    CATKIN_DEPENDS roscpp
-    INCLUDE_DIRS include
-    LIBRARIES ${PROJECT_NAME}
-  )
-ELSE()
-  SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-  SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-ENDIF()
 
 # Set Sourcefiles
 LIST(APPEND SOURCEFILES src/atan_camera.cpp
@@ -67,6 +66,7 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME}
   ${catkin_LIBRARIES})
 
 IF(USE_ROS)
+  INCLUDE_DIRECTORIES(${catkin_INCLUDE_DIRS})
   TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${catkin_LIBRARIES})
 ENDIF()
 

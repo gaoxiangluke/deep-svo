@@ -44,10 +44,14 @@ struct Seed
   float a;                     //!< a of Beta distribution: When high, probability of inlier is large.
   float b;                     //!< b of Beta distribution: When high, probability of outlier is large.
   float mu;                    //!< Mean of normal distribution.
+  float d;                     //!< Depth predicted by CNN
+  float z_min;                 //!< Minimum depth (search range for CNN depth)
+  float z_max;                 //!< Maximum depth (search range for CNN depth)
   float z_range;               //!< Max range of the possible depth.
   float sigma2;                //!< Variance of normal distribution.
   Matrix2d patch_cov;          //!< Patch covariance in reference image.
   Seed(Feature* ftr, float depth_mean, float depth_min);
+  Seed(Feature* ftr, float depth_mean, float depth_min, float depth_real);
 };
 
 /// Depth filter implements the Bayesian Update proposed in:
@@ -77,11 +81,11 @@ public:
     Options()
     : check_ftr_angle(false),
       epi_search_1d(false),
-      verbose(false),
+      verbose(false), // default: false
       use_photometric_disparity_error(false),
-      max_n_kfs(3),
+      max_n_kfs(3), // default: 3
       sigma_i_sq(5e-4),
-      seed_convergence_sigma2_thresh(200.0)
+      seed_convergence_sigma2_thresh(50.0) // default: 200.0
     {}
   } options_;
 
@@ -89,7 +93,23 @@ public:
       feature_detection::DetectorPtr feature_detector,
       callback_t seed_converged_cb);
 
+  DepthFilter(
+      feature_detection::DetectorPtr feature_detector,
+      callback_t seed_converged_cb,
+      const int& img_width,
+      const int& img_height,
+      const int& num_kfs_in_queue);
+
   virtual ~DepthFilter();
+
+  /// Set use CNN to true
+  void setUseCNN();
+
+  /// Set use CNN to false
+  void setNotUseCNN();
+
+  /// Reset frame id to zero
+  void resetFrameId();
 
   /// Start this thread when seed updating should be in a parallel thread.
   void startThread();
@@ -97,11 +117,17 @@ public:
   /// Stop the parallel thread that is running.
   void stopThread();
 
+  /// Set height, width and max depth
+  void setImgSize(const int& height, const int& width);
+
   /// Add frame to the queue to be processed.
   void addFrame(FramePtr frame);
 
   /// Add new keyframe to the queue
   void addKeyframe(FramePtr frame, double depth_mean, double depth_min);
+
+  /// (Newly added) Add new keyframe to the queue
+  void addKeyframe(FramePtr frame, double depth_mean, double depth_min, const cv::Mat& depthmap);
 
   /// Remove all seeds which are initialized from the specified keyframe. This
   /// function is used to make sure that no seeds points to a non-existent frame
@@ -122,7 +148,8 @@ public:
   std::list<Seed>& getSeeds() { return seeds_; }
 
   /// Bayes update of the seed, x is the measurement, tau2 the measurement uncertainty
-  static void updateSeed(
+  /// (It was static member function)
+  void updateSeed(
       const float x,
       const float tau2,
       Seed* seed);
@@ -148,11 +175,20 @@ protected:
   bool new_keyframe_set_;               //!< Do we have a new keyframe to process?.
   double new_keyframe_min_depth_;       //!< Minimum depth in the new keyframe. Used for range in new seeds.
   double new_keyframe_mean_depth_;      //!< Maximum depth in the new keyframe. Used for range in new seeds.
+  cv::Mat new_keyframe_depthmap_;       //!< Real depth in the new keyframe (from CNN). Used for range in new seeds.
+  bool use_cnn_;                        //!< Set true if CNN depth is used to initialize the seed
+  int img_width_;                       //!< Used to compute the pointers to the depthmap
+  int img_height_;                      //!< Used to compute the pointers to the depthmap
+  int num_kfs_in_queue_;                //!< Number of previous keyframes to depth filtering
   vk::PerformanceMonitor permon_;       //!< Separate performance monitor since the DepthFilter runs in a parallel thread.
   Matcher matcher_;
 
+
   /// Initialize new seeds from a frame.
   void initializeSeeds(FramePtr frame);
+
+  /// Initialize new seeds from a frame (with CNN depth).
+  void initializeSeedsWithDepths(FramePtr frame, const cv::Mat& depthmap);
 
   /// Update all seeds with a new measurement frame.
   virtual void updateSeeds(FramePtr frame);

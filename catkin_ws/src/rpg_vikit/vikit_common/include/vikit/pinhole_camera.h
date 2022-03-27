@@ -41,6 +41,10 @@ public:
 
   ~PinholeCamera();
 
+  // overloaded function to check valid reprojection
+  void
+  validReprojection(const Vector3d& xyz, cv::Point2f& uv, bool& valid) const;
+
   void
   initUnistortionMap();
 
@@ -49,6 +53,9 @@ public:
 
   virtual Vector3d
   cam2world(const Vector2d& px) const;
+
+  virtual Vector3d
+  cam2world(const Vector2d& px, const cv::Mat& depthmap) const;
 
   virtual Vector2d
   world2cam(const Vector3d& xyz_c) const;
@@ -69,6 +76,11 @@ public:
   virtual double errorMultiplier() const
   {
     return fabs(4.0*fx_*fy_);
+  }
+
+  virtual Matrix3d get_K() const
+  {
+    return K_;
   }
 
   inline const Matrix3d& K() const { return K_; };

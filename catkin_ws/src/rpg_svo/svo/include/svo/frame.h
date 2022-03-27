@@ -41,11 +41,12 @@ class Frame : boost::noncopyable
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    
+
   static int                    frame_counter_;         //!< Counts the number of created frames. Used to set the unique id.
   int                           id_;                    //!< Unique id of the frame.
   double                        timestamp_;             //!< Timestamp of when the image was recorded.
   vk::AbstractCamera*           cam_;                   //!< Camera model.
+  cv::Mat                       input_frame_;           //!< Keep a copy of RGB image (or greyscale if original SVO is used)
   Sophus::SE3                   T_f_w_;                 //!< Transform (f)rame from (w)orld.
   Matrix<double, 6, 6>          Cov_;                   //!< Covariance.
   ImgPyr                        img_pyr_;               //!< Image Pyramid.
@@ -56,6 +57,7 @@ public:
   int                           last_published_ts_;     //!< Timestamp of last publishing.
 
   Frame(vk::AbstractCamera* cam, const cv::Mat& img, double timestamp);
+  Frame(const FramePtr &frame); // deep copy (OR Frame(const FramePtr &frame) = default; (not tested))
   ~Frame();
 
   /// Initialize new frame and create image pyramid.
@@ -66,6 +68,9 @@ public:
 
   /// Add a feature to the image
   void addFeature(Feature* ftr);
+
+  /// Set the frame to non-keyframe
+  void setNotKeyframe();
 
   /// The KeyPoints are those five features which are closest to the 4 image corners
   /// and to the center and which have a 3D point assigned. These points are used

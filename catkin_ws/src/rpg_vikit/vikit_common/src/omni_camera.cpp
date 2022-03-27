@@ -80,6 +80,14 @@ OmniCamera::
 ~OmniCamera()
 {}
 
+void OmniCamera::
+validReprojection(const Vector3d& xyz, cv::Point2f& uv, bool& valid) const
+{}
+
+Vector3d OmniCamera::
+cam2world(const Vector2d& px, const cv::Mat& depthmap) const
+{ return Vector3d::Zero(); }
+
 Vector3d OmniCamera::
 cam2world(const double& u, const double& v) const
 {

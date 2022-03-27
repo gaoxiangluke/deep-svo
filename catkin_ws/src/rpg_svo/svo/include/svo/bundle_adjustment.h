@@ -103,6 +103,19 @@ g2oEdgeSE3* createG2oEdgeSE3(
     double huber_width,
     double weight = 1);
 
+inline bool isNaN(double _v) {
+  return std::isnan(_v);
+}
+
+inline bool isNaN(const Eigen::MatrixXd& _m) {
+  for (int i = 0; i < _m.rows(); ++i)
+    for (int j = 0; j < _m.cols(); ++j)
+      if (isNaN(_m(i, j)))
+        return true;
+
+  return false;
+}
+
 } // namespace ba
 } // namespace svo
 

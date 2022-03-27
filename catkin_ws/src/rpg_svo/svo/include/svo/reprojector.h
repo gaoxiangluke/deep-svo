@@ -44,7 +44,7 @@ public:
     size_t max_n_kfs;   //!< max number of keyframes to reproject from
     bool find_match_direct;
     Options()
-    : max_n_kfs(10),
+    : max_n_kfs(20), // Default: 10
       find_match_direct(true)
     {}
   } options_;

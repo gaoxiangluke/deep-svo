@@ -71,6 +71,7 @@ protected:
   const int grid_n_cols_;
   const int grid_n_rows_;
   vector<bool> grid_occupancy_;
+  bool verbose_; //!< for debugging purpose only
 
   void resetGrid();
 

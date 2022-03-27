@@ -8,6 +8,7 @@
 #ifndef ABSTRACT_CAMERA_H_
 #define ABSTRACT_CAMERA_H_
 
+#include <opencv2/opencv.hpp>
 #include <Eigen/Core>
 
 namespace vk
@@ -30,6 +31,14 @@ public:
 
   virtual ~AbstractCamera() {};
 
+  // newly added
+  virtual void
+  validReprojection(const Vector3d& xyz, cv::Point2f& uv, bool& valid) const = 0;
+
+  //newly added
+  virtual Vector3d
+  cam2world(const Vector2d& px, const cv::Mat& depthmap) const = 0;
+
   /// Project from pixels to world coordiantes. Returns a bearing vector of unit length.
   virtual Vector3d
   cam2world(const double& x, const double& y) const = 0;
@@ -40,6 +49,10 @@ public:
 
   virtual Vector2d
   world2cam(const Vector3d& xyz_c) const = 0;
+
+  // Just for pinhole camera model
+  virtual Matrix3d
+  get_K() const = 0;
 
   /// projects unit plane coordinates to camera coordinates
   virtual Vector2d

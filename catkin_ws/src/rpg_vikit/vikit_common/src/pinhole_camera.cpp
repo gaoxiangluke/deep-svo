@@ -41,6 +41,25 @@ PinholeCamera::
 ~PinholeCamera()
 {}
 
+void PinholeCamera::
+validReprojection(const Vector3d& xyz, cv::Point2f& uv, bool& valid) const
+{
+  Vector2i uv_i;
+
+  uv.x = static_cast<float>((xyz[0] * fx_) / xyz[2] + cx_);
+  uv.y = static_cast<float>((xyz[1] * fy_) / xyz[2] + cy_);
+
+  // Cast uv to integer to check range
+  uv_i[0] = static_cast<int>(uv.x);
+  uv_i[1] = static_cast<int>(uv.y);
+
+  if (uv_i[0]-10>=0 && uv_i[0]+10<=width_ &&
+      uv_i[1]-10>=0 && uv_i[1]+10<=height_)
+    valid = true;
+  else
+    valid = false;
+}
+
 Vector3d PinholeCamera::
 cam2world(const double& u, const double& v) const
 {
@@ -68,6 +87,18 @@ Vector3d PinholeCamera::
 cam2world (const Vector2d& uv) const
 {
   return cam2world(uv[0], uv[1]);
+}
+
+Vector3d PinholeCamera::
+cam2world (const Vector2d& uv, const cv::Mat& depthmap) const
+{
+  Vector3d xyz;
+  double d = static_cast<double>(depthmap.at<float>(uv[1], uv[0]));
+  xyz[0] = d*(uv[0] - cx_)/fx_;
+  xyz[1] = d*(uv[1] - cy_)/fy_;
+  xyz[2] = d;
+
+  return xyz;
 }
 
 Vector2d PinholeCamera::

@@ -229,6 +229,7 @@ void MapPointCandidates::addCandidatePointToFrame(FramePtr frame)
       it->first->type_ = Point::TYPE_UNKNOWN;
       it->first->n_failed_reproj_ = 0;
       it->second->frame->addFeature(it->second);
+
       it = candidates_.erase(it);
     }
     else

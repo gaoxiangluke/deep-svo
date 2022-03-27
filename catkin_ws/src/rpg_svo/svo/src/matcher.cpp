@@ -223,7 +223,7 @@ bool Matcher::findEpipolarMatchDirect(
                    ref_ftr.level, search_level_, halfpatch_size_+1, patch_with_border_);
   createPatchFromPatchWithBorder();
 
-  if(epi_length_ < 2.0)
+  if(epi_length_ < 2.0) // default: 2.0
   {
     px_cur_ = (px_A+px_B)/2.0;
     Vector2d px_scaled(px_cur_/(1<<search_level_));
@@ -250,8 +250,9 @@ bool Matcher::findEpipolarMatchDirect(
 
   if(n_steps > options_.max_epi_search_steps)
   {
-    printf("WARNING: skip epipolar search: %zu evaluations, px_lenght=%f, d_min=%f, d_max=%f.\n",
-           n_steps, epi_length_, d_min, d_max);
+    // Turn off the message to avoid flooding the terminal
+    // printf("WARNING: skip epipolar search: %zu evaluations, px_length=%f, d_min=%f, d_max=%f.\n",
+    //        n_steps, epi_length_, d_min, d_max);
     return false;
   }
 

@@ -24,8 +24,22 @@ public:
     start();
   }
 
+  /// Newly added constructor to manually start the timer
+  Timer(bool manualStart) :
+    time_(0.0),
+    accumulated_(0.0)
+  {}
+
   ~Timer()
   {}
+
+  /// to time the runtime of a single loop
+  inline void restart()
+  {
+    accumulated_ = 0.0;
+    time_ = 0.0;
+    gettimeofday(&start_time_, NULL);
+  }
 
   inline void start()
   {

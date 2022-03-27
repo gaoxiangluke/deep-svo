@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <math.h>
+
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 #include <vikit/math_utils.h>
