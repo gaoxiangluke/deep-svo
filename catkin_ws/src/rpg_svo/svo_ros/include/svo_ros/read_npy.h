@@ -370,7 +370,7 @@ inline std::string write_header_dict(const std::string& descr, bool fortran_orde
     return "{'descr': '" + descr + "', 'fortran_order': " + s_fortran_order + ", 'shape': " + shape_s + ", }";
 }
 
-inline void write_header(std::ostream& out, const std::string& descr, bool fortran_order, const std::vector<ndarray_len_t>& shape_v)
+inline void write_header(std::ostream& out, const std::string&  descr, bool fortran_order, const std::vector<ndarray_len_t>& shape_v)
 {
     std::string header_dict = write_header_dict(descr, fortran_order, shape_v);
 
@@ -495,6 +495,7 @@ inline void LoadArrayFromNumpy(const std::string& filename, std::vector<unsigned
     Typestring typestring_o {data};
     std::string expect_typestr = typestring_o.str();
     if (typestr != expect_typestr) {
+      std::cout << "mine: " << typestr << "  " << "expect: " << expect_typestr <<std::endl;
       throw std::runtime_error("formatting error: typestrings not matching");
     }
 
