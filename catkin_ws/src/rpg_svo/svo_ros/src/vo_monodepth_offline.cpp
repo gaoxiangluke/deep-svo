@@ -255,7 +255,7 @@ namespace svo
   }
 
   void VoNode::loadTimestamps()
-  {
+  {阿
     std::ifstream tr;
     std::string timesFile = sequence_ + "/times.txt";
     std::cout << "timestamp path: " << timesFile << std::endl;
