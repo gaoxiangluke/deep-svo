@@ -10,5 +10,7 @@ echo "midas"
 python2 evaluate_ate_scale.py ./ground_truth/kitti_ground_truth/$NUM.txt ./result/midas_$NUM.txt ./ground_truth/kitti_ground_truth/$NUM\_times.txt --plot ./$NUM.png --verbose --save ./midas_plot.data
 echo "orb"
 python2 evaluate_ate_scale.py ./ground_truth/kitti_ground_truth/$NUM.txt ./result/orbslam$NUM.txt ./ground_truth/kitti_ground_truth/$NUM\_times.txt --plot ./$NUM.png --verbose --save ./orb_plot.data
+echo "orb_v2"
+python2 evaluate_ate_scale.py ./ground_truth/kitti_ground_truth/$NUM.txt ./result/orbslam_v2$NUM.txt ./ground_truth/kitti_ground_truth/$NUM\_times.txt --plot ./$NUM.png --verbose --save ./orb_plotv2.data
 
 
